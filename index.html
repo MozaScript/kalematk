@@ -50,9 +50,9 @@
 <h1>كلماتك</h1>
 <textarea id="textInput" placeholder="اكتب كلماتك هنا..."></textarea>
 
-<select id="genderSelect">
-    <option value="male">ذكر</option>
-    <option value="female">أنثى</option>
+<select id="voiceSelect">
+    <option value="1">صوت 1</option>
+    <option value="2">صوت 2</option>
 </select>
 
 <div class="buttons">
@@ -65,7 +65,7 @@
 const textInput = document.getElementById('textInput');
 const speakBtn = document.getElementById('speakBtn');
 const downloadBtn = document.getElementById('downloadBtn');
-const genderSelect = document.getElementById('genderSelect');
+const voiceSelect = document.getElementById('voiceSelect');
 
 let audioContext;
 let recorder;
@@ -85,11 +85,11 @@ function speakAndRecord(text) {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'ar-SA';
 
-    // محاكاة الفرق بين ذكر وأنثى عبر pitch
-    if(genderSelect.value === 'male') {
-        utterance.pitch = 0.8; // أخفض صوتًا للذكور
+    // فرق بين الصوتين عبر pitch
+    if(voiceSelect.value === '1') {
+        utterance.pitch = 1.0; // الصوت الأول
     } else {
-        utterance.pitch = 1.2; // أعلى صوتًا للإناث
+        utterance.pitch = 0.8; // الصوت الثاني أخفض شوية
     }
 
     utterance.onstart = () => recorder && recorder.start();
