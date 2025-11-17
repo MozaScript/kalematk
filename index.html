@@ -24,7 +24,15 @@
         border: 1px solid #ccc;
         resize: none;
     }
-    .buttons { margin-top: 20px; display: flex; gap: 15px; }
+    select, .buttons { margin-top: 20px; }
+    select {
+        padding: 10px;
+        font-size: 16px;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        width: 220px;
+    }
+    .buttons { display: flex; gap: 15px; }
     button {
         padding: 10px 20px;
         font-size: 16px;
@@ -36,35 +44,65 @@
         transition: background 0.3s;
     }
     button:hover { background-color: #45a049; }
-    #speaker {
-        margin-top: 30px;
-        width: 50px;
-        height: 50px;
-        background: url('https://cdn-icons-png.flaticon.com/512/727/727240.png') no-repeat center/contain;
-        animation: none;
-    }
-    .speaking { animation: bounce 0.5s infinite alternate; }
-    @keyframes bounce { 0% { transform: translateY(0); } 100% { transform: translateY(-10px); } }
 </style>
 </head>
 <body>
 <h1>كلماتك</h1>
 <textarea id="textInput" placeholder="اكتب كلماتك هنا..."></textarea>
+
+<div class="buttons">
+    <select id="maleVoices">
+        <option value="">تحميل أصوات الذكور...</option>
+    </select>
+    <select id="femaleVoices">
+        <option value="">تحميل أصوات الإناث...</option>
+    </select>
+</div>
+
 <div class="buttons">
     <button id="speakBtn">تشغيل الصوت</button>
     <button id="downloadBtn">تحميل الصوت</button>
 </div>
-<div id="speaker"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/recorder-js@1.0.3/dist/recorder.min.js"></script>
 <script>
+const textInput = document.getElementById('textInput');
 const speakBtn = document.getElementById('speakBtn');
 const downloadBtn = document.getElementById('downloadBtn');
-const textInput = document.getElementById('textInput');
-const speaker = document.getElementById('speaker');
+const maleSelect = document.getElementById('maleVoices');
+const femaleSelect = document.getElementById('femaleVoices');
 
 let audioContext;
 let recorder;
+let voices = [];
+
+function populateVoices() {
+    voices = speechSynthesis.getVoices();
+    maleSelect.innerHTML = '';
+    femaleSelect.innerHTML = '';
+    
+    const maleVoices = voices.filter(v => v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('ج'));
+    const femaleVoices = voices.filter(v => v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('س'));
+
+    if(maleVoices.length === 0) maleVoices.push({name:'Default Male', lang:'ar-SA'});
+    if(femaleVoices.length === 0) femaleVoices.push({name:'Default Female', lang:'ar-SA'});
+
+    maleVoices.forEach((voice, i) => {
+        const option = document.createElement('option');
+        option.value = voices.indexOf(voice);
+        option.textContent = voice.name;
+        maleSelect.appendChild(option);
+    });
+    femaleVoices.forEach((voice, i) => {
+        const option = document.createElement('option');
+        option.value = voices.indexOf(voice);
+        option.textContent = voice.name;
+        femaleSelect.appendChild(option);
+    });
+}
+
+speechSynthesis.onvoiceschanged = populateVoices;
+populateVoices();
 
 async function initRecorder() {
     if (!audioContext) {
@@ -75,15 +113,12 @@ async function initRecorder() {
     }
 }
 
-function speakAndRecord(text) {
+function speakAndRecord(text, voice) {
     const utterance = new SpeechSynthesisUtterance(text);
+    utterance.voice = voice;
     utterance.lang = 'ar-SA';
-    utterance.onstart = () => {
-        speaker.classList.add('speaking');
-        recorder && recorder.start();
-    };
+    utterance.onstart = () => recorder && recorder.start();
     utterance.onend = async () => {
-        speaker.classList.remove('speaking');
         if(recorder) {
             const { blob } = await recorder.stop();
             recorder.clear();
@@ -99,17 +134,20 @@ function speakAndRecord(text) {
 
 speakBtn.addEventListener('click', async () => {
     const text = textInput.value.trim();
-    if (!text) return;
+    if(!text) return;
     await initRecorder();
-    speakAndRecord(text);
+    const voiceIndex = maleSelect.value || femaleSelect.value;
+    const selectedVoice = voices[voiceIndex] || null;
+    speakAndRecord(text, selectedVoice);
 });
 
-// زر التحميل يشتغل نفس التشغيل مباشرة لأنه يحفظ الملف بعد النطق
 downloadBtn.addEventListener('click', async () => {
     const text = textInput.value.trim();
-    if (!text) return;
+    if(!text) return;
     await initRecorder();
-    speakAndRecord(text);
+    const voiceIndex = maleSelect.value || femaleSelect.value;
+    const selectedVoice = voices[voiceIndex] || null;
+    speakAndRecord(text, selectedVoice);
 });
 </script>
 </body>
