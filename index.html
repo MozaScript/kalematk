@@ -30,7 +30,7 @@
         font-size: 16px;
         border-radius: 8px;
         border: 1px solid #ccc;
-        width: 220px;
+        width: 250px;
     }
     .buttons { display: flex; gap: 15px; }
     button {
@@ -50,14 +50,9 @@
 <h1>كلماتك</h1>
 <textarea id="textInput" placeholder="اكتب كلماتك هنا..."></textarea>
 
-<div class="buttons">
-    <select id="maleVoices">
-        <option value="">تحميل أصوات الذكور...</option>
-    </select>
-    <select id="femaleVoices">
-        <option value="">تحميل أصوات الإناث...</option>
-    </select>
-</div>
+<select id="voiceSelect">
+    <option value="">تحميل الأصوات...</option>
+</select>
 
 <div class="buttons">
     <button id="speakBtn">تشغيل الصوت</button>
@@ -69,41 +64,27 @@
 const textInput = document.getElementById('textInput');
 const speakBtn = document.getElementById('speakBtn');
 const downloadBtn = document.getElementById('downloadBtn');
-const maleSelect = document.getElementById('maleVoices');
-const femaleSelect = document.getElementById('femaleVoices');
+const voiceSelect = document.getElementById('voiceSelect');
 
 let audioContext;
 let recorder;
 let voices = [];
 
+// تحميل الأصوات في قائمة واحدة
 function populateVoices() {
     voices = speechSynthesis.getVoices();
-    maleSelect.innerHTML = '';
-    femaleSelect.innerHTML = '';
-    
-    const maleVoices = voices.filter(v => v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('ج'));
-    const femaleVoices = voices.filter(v => v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('س'));
-
-    if(maleVoices.length === 0) maleVoices.push({name:'Default Male', lang:'ar-SA'});
-    if(femaleVoices.length === 0) femaleVoices.push({name:'Default Female', lang:'ar-SA'});
-
-    maleVoices.forEach((voice, i) => {
+    voiceSelect.innerHTML = '';
+    voices.forEach((voice, i) => {
         const option = document.createElement('option');
-        option.value = voices.indexOf(voice);
-        option.textContent = voice.name;
-        maleSelect.appendChild(option);
-    });
-    femaleVoices.forEach((voice, i) => {
-        const option = document.createElement('option');
-        option.value = voices.indexOf(voice);
-        option.textContent = voice.name;
-        femaleSelect.appendChild(option);
+        option.value = i;
+        option.textContent = voice.name; // ممكن تضيف (ذكر/أنثى) لو عايز
+        voiceSelect.appendChild(option);
     });
 }
-
 speechSynthesis.onvoiceschanged = populateVoices;
 populateVoices();
 
+// تهيئة المسجل
 async function initRecorder() {
     if (!audioContext) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -113,6 +94,7 @@ async function initRecorder() {
     }
 }
 
+// تشغيل النص وتسجيله
 function speakAndRecord(text, voice) {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.voice = voice;
@@ -132,12 +114,12 @@ function speakAndRecord(text, voice) {
     speechSynthesis.speak(utterance);
 }
 
+// أحداث الأزرار
 speakBtn.addEventListener('click', async () => {
     const text = textInput.value.trim();
     if(!text) return;
     await initRecorder();
-    const voiceIndex = maleSelect.value || femaleSelect.value;
-    const selectedVoice = voices[voiceIndex] || null;
+    const selectedVoice = voices[voiceSelect.value] || null;
     speakAndRecord(text, selectedVoice);
 });
 
@@ -145,8 +127,7 @@ downloadBtn.addEventListener('click', async () => {
     const text = textInput.value.trim();
     if(!text) return;
     await initRecorder();
-    const voiceIndex = maleSelect.value || femaleSelect.value;
-    const selectedVoice = voices[voiceIndex] || null;
+    const selectedVoice = voices[voiceSelect.value] || null;
     speakAndRecord(text, selectedVoice);
 });
 </script>
