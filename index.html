@@ -30,9 +30,9 @@
         font-size: 16px;
         border-radius: 8px;
         border: 1px solid #ccc;
-        width: 250px;
+        width: 150px;
     }
-    .buttons { display: flex; gap: 15px; }
+    .buttons { display: flex; gap: 15px; margin-top: 20px; }
     button {
         padding: 10px 20px;
         font-size: 16px;
@@ -50,8 +50,9 @@
 <h1>كلماتك</h1>
 <textarea id="textInput" placeholder="اكتب كلماتك هنا..."></textarea>
 
-<select id="voiceSelect">
-    <option value="">تحميل الأصوات...</option>
+<select id="genderSelect">
+    <option value="male">ذكر</option>
+    <option value="female">أنثى</option>
 </select>
 
 <div class="buttons">
@@ -64,25 +65,10 @@
 const textInput = document.getElementById('textInput');
 const speakBtn = document.getElementById('speakBtn');
 const downloadBtn = document.getElementById('downloadBtn');
-const voiceSelect = document.getElementById('voiceSelect');
+const genderSelect = document.getElementById('genderSelect');
 
 let audioContext;
 let recorder;
-let voices = [];
-
-// تحميل الأصوات في قائمة واحدة
-function populateVoices() {
-    voices = speechSynthesis.getVoices();
-    voiceSelect.innerHTML = '';
-    voices.forEach((voice, i) => {
-        const option = document.createElement('option');
-        option.value = i;
-        option.textContent = voice.name; // ممكن تضيف (ذكر/أنثى) لو عايز
-        voiceSelect.appendChild(option);
-    });
-}
-speechSynthesis.onvoiceschanged = populateVoices;
-populateVoices();
 
 // تهيئة المسجل
 async function initRecorder() {
@@ -95,10 +81,17 @@ async function initRecorder() {
 }
 
 // تشغيل النص وتسجيله
-function speakAndRecord(text, voice) {
+function speakAndRecord(text) {
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.voice = voice;
     utterance.lang = 'ar-SA';
+
+    // محاكاة الفرق بين ذكر وأنثى عبر pitch
+    if(genderSelect.value === 'male') {
+        utterance.pitch = 0.8; // أخفض صوتًا للذكور
+    } else {
+        utterance.pitch = 1.2; // أعلى صوتًا للإناث
+    }
+
     utterance.onstart = () => recorder && recorder.start();
     utterance.onend = async () => {
         if(recorder) {
@@ -119,16 +112,14 @@ speakBtn.addEventListener('click', async () => {
     const text = textInput.value.trim();
     if(!text) return;
     await initRecorder();
-    const selectedVoice = voices[voiceSelect.value] || null;
-    speakAndRecord(text, selectedVoice);
+    speakAndRecord(text);
 });
 
 downloadBtn.addEventListener('click', async () => {
     const text = textInput.value.trim();
     if(!text) return;
     await initRecorder();
-    const selectedVoice = voices[voiceSelect.value] || null;
-    speakAndRecord(text, selectedVoice);
+    speakAndRecord(text);
 });
 </script>
 </body>
