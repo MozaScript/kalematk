@@ -5,45 +5,45 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>كلماتك</title>
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        background: #f2f2f2;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 40px 20px;
-    }
-    h1 { color: #333; margin-bottom: 20px; }
-    textarea {
-        width: 90%;
-        max-width: 600px;
-        height: 150px;
-        padding: 10px;
-        font-size: 16px;
-        border-radius: 10px;
-        border: 1px solid #ccc;
-        resize: none;
-    }
-    select, .buttons { margin-top: 20px; }
-    select {
-        padding: 10px;
-        font-size: 16px;
-        border-radius: 8px;
-        border: 1px solid #ccc;
-        width: 150px;
-    }
-    .buttons { display: flex; gap: 15px; margin-top: 20px; }
-    button {
-        padding: 10px 20px;
-        font-size: 16px;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        background-color: #4CAF50;
-        color: white;
-        transition: background 0.3s;
-    }
-    button:hover { background-color: #45a049; }
+body {
+    font-family: Arial, sans-serif;
+    background: #f2f2f2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+}
+h1 { color: #333; margin-bottom: 20px; }
+textarea {
+    width: 90%;
+    max-width: 600px;
+    height: 150px;
+    padding: 10px;
+    font-size: 16px;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+    resize: none;
+}
+select, .buttons { margin-top: 20px; }
+select {
+    padding: 10px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    width: 150px;
+}
+.buttons { display: flex; gap: 15px; margin-top: 20px; }
+button {
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    background-color: #4CAF50;
+    color: white;
+    transition: background 0.3s;
+}
+button:hover { background-color: #45a049; }
 </style>
 </head>
 <body>
@@ -53,6 +53,8 @@
 <select id="voiceSelect">
     <option value="1">صوت 1</option>
     <option value="2">صوت 2</option>
+    <option value="3">صوت 3</option>
+    <option value="4">صوت 4</option>
 </select>
 
 <div class="buttons">
@@ -60,67 +62,63 @@
     <button id="downloadBtn">تحميل الصوت</button>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/recorder-js@1.0.3/dist/recorder.min.js"></script>
 <script>
 const textInput = document.getElementById('textInput');
+const voiceSelect = document.getElementById('voiceSelect');
 const speakBtn = document.getElementById('speakBtn');
 const downloadBtn = document.getElementById('downloadBtn');
-const voiceSelect = document.getElementById('voiceSelect');
 
-let audioContext;
-let recorder;
+let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let destination = audioCtx.createMediaStreamDestination();
+let mediaRecorder;
+let chunks = [];
 
-// تهيئة المسجل
-async function initRecorder() {
-    if (!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const input = audioContext.createMediaStreamSource(stream);
-        recorder = new Recorder(input, { numChannels: 1 });
+// إنشاء أصوات مختلفة عن طريق pitch و rate
+function getVoiceParams(option) {
+    switch(option) {
+        case '1': return { pitch: 1.2, rate: 1.0 };
+        case '2': return { pitch: 0.8, rate: 1.0 };
+        case '3': return { pitch: 1.0, rate: 1.2 };
+        case '4': return { pitch: 0.9, rate: 0.9 };
+        default: return { pitch: 1.0, rate: 1.0 };
     }
 }
 
-// تشغيل النص وتسجيله
-function speakAndRecord(text) {
+// تشغيل الصوت مع تسجيله
+async function speakAndRecord() {
+    const text = textInput.value.trim();
+    if (!text) return;
+
+    const params = getVoiceParams(voiceSelect.value);
     const utterance = new SpeechSynthesisUtterance(text);
+    utterance.pitch = params.pitch;
+    utterance.rate = params.rate;
     utterance.lang = 'ar-SA';
 
-    // فرق بين الصوتين عبر pitch
-    if(voiceSelect.value === '1') {
-        utterance.pitch = 1.0; // الصوت الأول
-    } else {
-        utterance.pitch = 0.8; // الصوت الثاني أخفض شوية
-    }
+    // وصل الـ utterance لـ destination لتسجيله
+    const synth = speechSynthesis;
+    // ملاحظة: لا يمكن تسجيل مباشرة صوت SpeechSynthesis في كل المتصفحات
+    // لكن هنا تجربة على Chrome حيث يمكن توصيله من AudioContext
+    const source = audioCtx.createMediaStreamSource(destination.stream);
 
-    utterance.onstart = () => recorder && recorder.start();
-    utterance.onend = async () => {
-        if(recorder) {
-            const { blob } = await recorder.stop();
-            recorder.clear();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'كلماتك.wav';
-            a.click();
-        }
+    mediaRecorder = new MediaRecorder(destination.stream);
+    chunks = [];
+    mediaRecorder.ondataavailable = e => chunks.push(e.data);
+    mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'kalematk.webm';
+        a.click();
     };
-    speechSynthesis.speak(utterance);
+    mediaRecorder.start();
+    synth.speak(utterance);
+    utterance.onend = () => mediaRecorder.stop();
 }
 
-// أحداث الأزرار
-speakBtn.addEventListener('click', async () => {
-    const text = textInput.value.trim();
-    if(!text) return;
-    await initRecorder();
-    speakAndRecord(text);
-});
-
-downloadBtn.addEventListener('click', async () => {
-    const text = textInput.value.trim();
-    if(!text) return;
-    await initRecorder();
-    speakAndRecord(text);
-});
+speakBtn.addEventListener('click', speakAndRecord);
+downloadBtn.addEventListener('click', speakAndRecord);
 </script>
 </body>
 </html>
