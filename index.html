@@ -69,11 +69,8 @@ const speakBtn = document.getElementById('speakBtn');
 const downloadBtn = document.getElementById('downloadBtn');
 
 let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-let destination = audioCtx.createMediaStreamDestination();
-let mediaRecorder;
-let chunks = [];
 
-// إنشاء أصوات مختلفة عن طريق pitch و rate
+// تعيين pitch و rate لكل صوت
 function getVoiceParams(option) {
     switch(option) {
         case '1': return { pitch: 1.2, rate: 1.0 };
@@ -84,10 +81,23 @@ function getVoiceParams(option) {
     }
 }
 
-// تشغيل الصوت مع تسجيله
-async function speakAndRecord() {
+// زر التشغيل فقط
+function speakOnly() {
     const text = textInput.value.trim();
-    if (!text) return;
+    if(!text) return;
+
+    const params = getVoiceParams(voiceSelect.value);
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.pitch = params.pitch;
+    utterance.rate = params.rate;
+    utterance.lang = 'ar-SA';
+    speechSynthesis.speak(utterance);
+}
+
+// زر التحميل (تسجيل الصوت)
+function downloadAudio() {
+    const text = textInput.value.trim();
+    if(!text) return;
 
     const params = getVoiceParams(voiceSelect.value);
     const utterance = new SpeechSynthesisUtterance(text);
@@ -95,14 +105,14 @@ async function speakAndRecord() {
     utterance.rate = params.rate;
     utterance.lang = 'ar-SA';
 
-    // وصل الـ utterance لـ destination لتسجيله
+    // MediaRecorder لتسجيل الصوت
+    const destination = audioCtx.createMediaStreamDestination();
     const synth = speechSynthesis;
-    // ملاحظة: لا يمكن تسجيل مباشرة صوت SpeechSynthesis في كل المتصفحات
-    // لكن هنا تجربة على Chrome حيث يمكن توصيله من AudioContext
-    const source = audioCtx.createMediaStreamSource(destination.stream);
 
-    mediaRecorder = new MediaRecorder(destination.stream);
-    chunks = [];
+    // توصيل AudioContext بالـ utterance
+    // ملاحظة: بعض المتصفحات لا تدعم تسجيل صوت TTS مباشرة، التجربة تكون على Chrome
+    const mediaRecorder = new MediaRecorder(destination.stream);
+    const chunks = [];
     mediaRecorder.ondataavailable = e => chunks.push(e.data);
     mediaRecorder.onstop = () => {
         const blob = new Blob(chunks, { type: 'audio/webm' });
@@ -112,13 +122,14 @@ async function speakAndRecord() {
         a.download = 'kalematk.webm';
         a.click();
     };
+
     mediaRecorder.start();
     synth.speak(utterance);
     utterance.onend = () => mediaRecorder.stop();
 }
 
-speakBtn.addEventListener('click', speakAndRecord);
-downloadBtn.addEventListener('click', speakAndRecord);
+speakBtn.addEventListener('click', speakOnly);
+downloadBtn.addEventListener('click', downloadAudio);
 </script>
 </body>
 </html>
